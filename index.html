@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 GPS Tracker - Real-time OpenStreetMap</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; width: 100vw; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
+
+  <script>
+    // Konfigurasi Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyATMy6mE-v1oaOYb2GuIqlVKHBDSzSEDtg",
+      authDomain: "gpstracker-575ea.firebaseapp.com",
+      databaseURL: "https://gpstracker-575ea-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "gpstracker-575ea",
+      storageBucket: "gpstracker-575ea.appspot.com",
+      messagingSenderId: "54119807767",
+      appId: "1:54119807767:web:5fff2f838ded9120d51552"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+
+    // Referensi untuk mendapatkan data lokasi
+    const locationRef = database.ref('logs');
+
+    // Lokasi default untuk peta
+    var lat = -8.6522;
+    var lng = 115.2165;
+
+    // Membuat peta dan menetapkan posisi awal
+    var map = L.map('map').setView([lat, lng], 15);
+
+    // Gunakan tile OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Membuat marker dan popup untuk lokasi awal
+    var marker = L.marker([lat, lng]).addTo(map);
+    var popupContent = `
+      <b>📍 Lokasi</b><br>
+      Latitude: ${lat}<br>
+      Longitude: ${lng}<br>
+      <b>🌡️ Suhu:</b> -<br>
+      <b>💧 Kelembapan:</b> -<br>
+      <b>🧭 Akselerasi:</b><br>
+      accX: -<br>
+      accY: -<br>
+      accZ: -
+    `;
+    marker.bindPopup(popupContent).openPopup();
+
+    // Fungsi untuk update marker dengan data terbaru
+    function updateMarker(data) {
+      lat = data.lokasi.latitude;
+      lng = data.lokasi.longitude;
+
+      // Update peta dan marker
+      map.setView([lat, lng], 15);
+      marker.setLatLng([lat, lng]);
+
+      // Update popup dengan data terbaru
+      var popupContent = `
+        <b>📍 Lokasi</b><br>
+        Latitude: ${lat}<br>
+        Longitude: ${lng}<br>
+        <b>🌡️ Suhu:</b> ${data.sensor.suhu} °C<br>
+        <b>💧 Kelembapan:</b> ${data.sensor.kelembapan} %<br>
+        <b>🧭 Akselerasi:</b><br>
+        accX: ${data.sensor.accX}<br>
+        accY: ${data.sensor.accY}<br>
+        accZ: ${data.sensor.accZ}
+      `;
+      marker.bindPopup(popupContent).openPopup();
+    }
+
+    // Mengambil data lokasi terbaru dari Firebase dan update setiap perubahan
+    locationRef.on('child_changed', function(snapshot) {
+      var data = snapshot.val();
+      updateMarker(data);
+    });
+
+  </script>
+</body>
+</html>
